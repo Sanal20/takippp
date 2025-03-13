@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yaklaşan Ürünler</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <style>
+        .warning {
+            color: #8B0000; /* Daha koyu kırmızı renk */
+        }
+    </style>
+</head>
+<body>
+    <h2>Yaklaşan Ürünler</h2>
+    <ul id="upcoming-product-list"></ul>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const upcomingProducts = JSON.parse(localStorage.getItem('upcomingProducts')) || [];
+            const productList = document.getElementById('upcoming-product-list');
+
+            upcomingProducts.forEach(product => {
+                const listItem = document.createElement('li');
+                listItem.textContent = `Ürün: ${product.name}, Tarih: ${product.date}`;
+                listItem.classList.add('warning');
+                productList.appendChild(listItem);
+            });
+        });
+    </script>
+</body>
+</html>
