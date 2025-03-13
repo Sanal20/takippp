@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Barkod Okuyucu</string>
+    <string name="scan_button">Barkod Tara</string>
+    <string name="scanned_result">Tarama Sonucu: %1$s</string>
+    <string name="error_message">Barkod taranamadı. Lütfen tekrar deneyin.</string>
+    <string name="camera_permission_required">Kamera izni gereklidir. Lütfen izinleri kontrol edin.</string>
+</resources>

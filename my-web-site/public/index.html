@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Web Site</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <meta name="google-site-verification" content="kl-K69zTDvpd60Y3SXGWK1FZu6cIMWKuxyUdOofjL3Y" />
+    <style>
+        .warning {
+            color: #8B0000; /* Daha koyu kırmızı renk */
+        }
+        .modal {
+            display: none; /* Modal başlangıçta gizli */
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgb(0,0,0);
+            background-color: rgba(0,0,0,0.4);
+            padding-top: 60px;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <div class="login-container" id="login-container">
+        <h2>Giriş Yap</h2>
+        <form id="login-form">
+            <label for="username">Kullanıcı Adı:</label>
+            <input type="text" id="username" name="username" required>
+            <label for="password">Şifre:</label>
+            <input type="password" id="password" name="password" required>
+            <input type="checkbox" id="show-password"> Şifreyi Göster
+            <button type="submit">Giriş Yap</button>
+        </form>
+        <p>Hesabınız yok mu? <a href="#" id="register-link">Kayıt Ol</a></p>
+        <p>Şifrenizi mi unuttunuz? <a href="#" id="forgot-password-link">Şifremi Unuttum</a></p>
+    </div>
+
+    <div id="register-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Kayıt Ol</h2>
+            <form id="register-form">
+                <label for="register-username">Kullanıcı Adı:</label>
+                <input type="text" id="register-username" name="register-username" required>
+                <label for="register-email">E-posta:</label>
+                <input type="email" id="register-email" name="register-email" required>
+                <label for="register-phone">Telefon:</label>
+                <input type="tel" id="register-phone" name="register-phone" required>
+                <label for="register-password">Şifre:</label>
+                <input type="password" id="register-password" name="register-password" required>
+                <input type="checkbox" id="show-register-password"> Şifreyi Göster
+                <button type="submit">Kayıt Ol</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="forgot-password-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Şifremi Unuttum</h2>
+            <form id="forgot-password-form">
+                <label for="reset-username">Kullanıcı Adı:</label>
+                <input type="text" id="reset-username" name="reset-username" required>
+                <label for="reset-email">E-posta:</label>
+                <input type="email" id="reset-email" name="reset-email" required>
+                <label for="reset-phone">Telefon:</label>
+                <input type="tel" id="reset-phone" name="reset-phone" required>
+                <label for="new-password">Yeni Şifre:</label>
+                <input type="password" id="new-password" name="new-password" required>
+                <input type="checkbox" id="show-new-password"> Şifreyi Göster
+                <button type="submit">Şifreyi Sıfırla</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="product-container" id="product-container" style="display: none;">
+        <h2>Ürün Ekle</h2>
+        <form id="product-form">
+            <label for="product-name">Ürün Adı:</label>
+            <input type="text" id="product-name" name="product-name" required>
+            <label for="product-date">Tarih:</label>
+            <input type="date" id="product-date" name="product-date" required>
+            <button type="submit">Ürün Ekle</button>
+        </form>
+        <button id="start-scan">Barkod Tara</button>
+        <div id="scanner-container" style="display: none;">
+            <video id="scanner"></video>
+        </div>
+        <ul id="product-list"></ul>
+        <button id="view-upcoming">Yaklaşan Ürünleri Gör</button>
+        <button id="view-expired">Tarihi Geçen Ürünleri Gör</button>
+        <button id="export-excel">Excel'e Aktar</button>
+    </div>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', function(event) {
+            event.preventDefault(); // Formun gönderilmesini engelle
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            // Demo kullanıcı bilgileri
+            const demoUsername = 'demo';
+            const demoPassword = 'demo123';
+
+            if (username === demoUsername && password === demoPassword) {
+                alert('Giriş başarılı! Hoş geldiniz, demo kullanıcı.');
+                document.getElementById('login-container').style.display = 'none';
+                document.getElementById('product-container').style.display = 'block';
+                loadProducts();
+            } else {
+                alert('Geçersiz kullanıcı adı veya şifre.');
+            }
+        });
+
+        document.getElementById('product-form').addEventListener('submit', function(event) {
+            event.preventDefault(); // Formun gönderilmesini engelle
+
+            const productName = document.getElementById('product-name').value;
+            const productDate = document.getElementById('product-date').value;
+
+            const productList = document.getElementById('product-list');
+            const listItem = document.createElement('li');
+            listItem.innerHTML = `Ürün: ${productName}, Tarih: ${productDate} 
+                                  <button onclick="editProduct('${productName}', '${productDate}')">Güncelle</button>
+                                  <button onclick="deleteProduct('${productName}')">Sil</button>`;
+            productList.appendChild(listItem);
+
+            // Ürünleri localStorage'a kaydet
+            const products = JSON.parse(localStorage.getItem('products')) || [];
+            products.push({ name: productName, date: productDate });
+            localStorage.setItem('products', JSON.stringify(products));
+
+            // Tarih kontrolü
+            const currentDate = new Date();
+            const inputDate = new Date(productDate);
+            const timeDiff = inputDate - currentDate;
+            const dayDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+            if (dayDiff <= 7) {
+                listItem.classList.add('warning');
+                alert(`Dikkat! ${productName} ürününün tarihi yaklaşıyor.`);
+                // Yaklaşan ürünleri localStorage'a kaydet
+                const upcomingProducts = JSON.parse(localStorage.getItem('upcomingProducts')) || [];
+                upcomingProducts.push({ name: productName, date: productDate });
+                localStorage.setItem('upcomingProducts', JSON.stringify(upcomingProducts));
+            }
+
+            if (dayDiff < 0) {
+                // Tarihi geçen ürünleri localStorage'a kaydet
+                const expiredProducts = JSON.parse(localStorage.getItem('expiredProducts')) || [];
+                expiredProducts.push({ name: productName, date: productDate });
+                localStorage.setItem('expiredProducts', JSON.stringify(expiredProducts));
+            }
+
+            // Formu temizle
+            document.getElementById('product-form').reset();
+        });
+
+        document.getElementById('start-scan').addEventListener('click', function() {
+            if (window.cordova && window.cordova.plugins && window.cordova.plugins.barcodeScanner) {
+                // Android cihazlarda Cordova Barcode Scanner kullan
+                window.cordova.plugins.barcodeScanner.scan(
+                    function (result) {
+                        if (!result.cancelled) {
+                            const code = result.text;
+                            const date = new Date().toLocaleString();
+                            alert(`Barkod tarandı: ${code}`);
+
+                            // Barkodu ve tarihi ürün listesine ekle
+                            const productList = document.getElementById('product-list');
+                            const listItem = document.createElement('li');
+                            listItem.textContent = `Barkod: ${code}, Tarih: ${date}`;
+                            productList.appendChild(listItem);
+                        }
+                    },
+                    function (error) {
+                        alert(`Taramada hata oluştu: ${error}`);
+                    },
+                    {
+                        preferFrontCamera: false, // Ön kamerayı kullanma
+                        showFlipCameraButton: true, // Kamera değiştirme butonunu göster
+                        showTorchButton: true, // Fener butonunu göster
+                        torchOn: false, // Fener başlangıçta kapalı
+                        prompt: "Barkodu tarayın", // Tarama ekranında gösterilecek mesaj
+                        resultDisplayDuration: 500, // Sonuç ekranında gösterim süresi
+                        formats: "QR_CODE,PDF_417,CODE_39", // Desteklenen barkod formatları
+                        orientation: "portrait", // Ekran yönü
+                        disableAnimations: true, // Animasyonları devre dışı bırak
+                        disableSuccessBeep: false // Başarı bip sesini devre dışı bırakma
+                    }
+                );
+            } else {
+                // Web tarayıcısında Quagga kullan
+                document.getElementById('scanner-container').style.display = 'block';
+                Quagga.init({
+                    inputStream: {
+                        name: "Live",
+                        type: "LiveStream",
+                        target: document.querySelector('#scanner')    // Or '#yourElement' (optional)
+                    },
+                    decoder: {
+                        readers: ["code_128_reader"]
+                    }
+                }, function(err) {
+                    if (err) {
+                        console.log(err);
+                        return;
+                    }
+                    console.log("Initialization finished. Ready to start");
+                    Quagga.start();
+                });
+
+                Quagga.onDetected(function(data) {
+                    const code = data.codeResult.code;
+                    const date = new Date().toLocaleString();
+                    alert(`Barkod tarandı: ${code}`);
+                    Quagga.stop();
+                    document.getElementById('scanner-container').style.display = 'none';
+
+                    // Barkodu ve tarihi ürün listesine ekle
+                    const productList = document.getElementById('product-list');
+                    const listItem = document.createElement('li');
+                    listItem.textContent = `Barkod: ${code}, Tarih: ${date}`;
+                    productList.appendChild(listItem);
+                });
+            }
+        });
+
+        document.getElementById('view-upcoming').addEventListener('click', function() {
+            window.location.href = 'upcoming-products.html';
+        });
+
+        document.getElementById('view-expired').addEventListener('click', function() {
+            window.location.href = 'expired-products.html';
+        });
+
+        // Şifremi Unuttum modal işlemleri
+        const forgotPasswordModal = document.getElementById('forgot-password-modal');
+        const forgotPasswordBtn = document.getElementById('forgot-password-link');
+        const forgotPasswordSpan = document.getElementsByClassName('close')[0];
+
+        forgotPasswordBtn.onclick = function() {
+            forgotPasswordModal.style.display = 'block';
+        }
+
+        forgotPasswordSpan.onclick = function() {
+            forgotPasswordModal.style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            if (event.target == forgotPasswordModal) {
+                forgotPasswordModal.style.display = 'none';
+            }
+        }
+
+        document.getElementById('forgot-password-form').addEventListener('submit', function(event) {
+            event.preventDefault(); // Formun gönderilmesini engelle
+
+            const resetUsername = document.getElementById('reset-username').value;
+            const resetEmail = document.getElementById('reset-email').value;
+            const resetPhone = document.getElementById('reset-phone').value;
+            const newPassword = document.getElementById('new-password').value;
+
+            // Kullanıcı bilgilerini doğrula ve şifreyi güncelle
+            if (resetUsername === 'demo' && resetEmail === 'demo@example.com' && resetPhone === '1234567890') {
+                localStorage.setItem('demoPassword', newPassword);
+                alert('Şifre başarıyla güncellendi.');
+                forgotPasswordModal.style.display = 'none';
+            } else {
+                alert('Geçersiz kullanıcı adı, e-posta veya telefon numarası.');
+            }
+        });
+
+        // Kayıt Ol modal işlemleri
+        const registerModal = document.getElementById('register-modal');
+        const registerBtn = document.getElementById('register-link');
+        const registerSpan = document.getElementsByClassName('close')[1];
+
+        registerBtn.onclick = function() {
+            registerModal.style.display = 'block';
+        }
+
+        registerSpan.onclick = function() {
+            registerModal.style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            if (event.target == registerModal) {
+                registerModal.style.display = 'none';
+            }
+        }
+
+        document.getElementById('register-form').addEventListener('submit', function(event) {
+            event.preventDefault(); // Formun gönderilmesini engelle
+
+            const registerUsername = document.getElementById('register-username').value;
+            const registerEmail = document.getElementById('register-email').value;
+            const registerPhone = document.getElementById('register-phone').value;
+            const registerPassword = document.getElementById('register-password').value;
+
+            // Kullanıcı bilgilerini localStorage'a kaydet
+            const users = JSON.parse(localStorage.getItem('users')) || [];
+            users.push({ username: registerUsername, email: registerEmail, phone: registerPhone, password: registerPassword });
+            localStorage.setItem('users', JSON.stringify(users));
+
+            alert('Kayıt başarılı! Giriş yapabilirsiniz.');
+            registerModal.style.display = 'none';
+        });
+
+        // Excel'e Aktar butonu işlemleri
+        document.getElementById('export-excel').addEventListener('click', function() {
+            const products = JSON.parse(localStorage.getItem('products')) || [];
+            const worksheet = XLSX.utils.json_to_sheet(products);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Ürünler');
+            XLSX.writeFile(workbook, 'urunler.xlsx');
+        });
+
+        function loadProducts() {
+            const products = JSON.parse(localStorage.getItem('products')) || [];
+            const productList = document.getElementById('product-list');
+            productList.innerHTML = '';
+
+            products.forEach(product => {
+                const listItem = document.createElement('li');
+                listItem.innerHTML = `Ürün: ${product.name}, Tarih: ${product.date} 
+                                      <button onclick="editProduct('${product.name}', '${product.date}')">Güncelle</button>
+                                      <button onclick="deleteProduct('${product.name}')">Sil</button>`;
+                productList.appendChild(listItem);
+
+                // Tarih kontrolü
+                const currentDate = new Date();
+                const inputDate = new Date(product.date);
+                const timeDiff = inputDate - currentDate;
+                const dayDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+                if (dayDiff <= 7) {
+                    listItem.classList.add('warning');
+                }
+            });
+        }
+
+        function deleteProduct(name) {
+            let products = JSON.parse(localStorage.getItem('products')) || [];
+            products = products.filter(product => product.name !== name);
+            localStorage.setItem('products', JSON.stringify(products));
+            loadProducts();
+        }
+
+        function editProduct(name, date) {
+            document.getElementById('product-name').value = name;
+            document.getElementById('product-date').value = date;
+            deleteProduct(name);
+        }
+
+        // Şifreyi Göster işlevi
+        document.getElementById('show-password').addEventListener('change', function() {
+            const passwordField = document.getElementById('password');
+            if (this.checked) {
+                passwordField.type = 'text';
+            } else {
+                passwordField.type = 'password';
+            }
+        });
+
+        document.getElementById('show-register-password').addEventListener('change', function() {
+            const passwordField = document.getElementById('register-password');
+            if (this.checked) {
+                passwordField.type = 'text';
+            } else {
+                passwordField.type = 'password';
+            }
+        });
+
+        document.getElementById('show-new-password').addEventListener('change', function() {
+            const passwordField = document.getElementById('new-password');
+            if (this.checked) {
+                passwordField.type = 'text';
+            } else {
+                passwordField.type = 'password';
+            }
+        });
+    </script>
+    <script src="../dist/bundle.js"></script>
+</body>
+</html>
